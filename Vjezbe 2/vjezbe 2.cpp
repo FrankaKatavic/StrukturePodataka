@@ -6,7 +6,7 @@
 
 struct _person;
 typedef struct _person* position;
-typedef struct _person 
+typedef struct _person
 {
 	char name[MAX_SIZE];
 	char lastName[MAX_SIZE];
@@ -15,7 +15,7 @@ typedef struct _person
 	position next;
 }Person;
 
-position CreatePerson(char* name, char*lastName, int by) {
+position CreatePerson(char* name, char* lastName, int by) {
 	position newPerson = NULL;
 	newPerson = (position)malloc(sizeof(Person));
 	if (!newPerson) {
@@ -26,12 +26,12 @@ position CreatePerson(char* name, char*lastName, int by) {
 	strcpy(newPerson->lastName, lastName);
 	newPerson->birthyear = by;
 	newPerson->next = NULL;
-	
+
 	return newPerson;
 
 }
 
-int PrependList(position head, char* name, char*lastName, int by) {
+int PrependList(position head, char* name, char* lastName, int by) {
 	position newPerson = NULL;
 	newPerson = CreatePerson(name, lastName, by);
 	if (!newPerson) {
@@ -60,7 +60,7 @@ int printList(position first)
 
 }
 
-int AppendList(position head, char* name, char*lastName, int by) 
+int AppendList(position head, char* name, char* lastName, int by)
 {
 	position newPerson = NULL;
 	newPerson = CreatePerson(name, lastName, by);
@@ -73,7 +73,7 @@ int AppendList(position head, char* name, char*lastName, int by)
 	last = FindLast(head);
 	newPerson->next = last->next;
 	last->next = newPerson;
-
+	return EXIT_SUCCESS;
 }
 
 position FindLast(position head)
@@ -88,13 +88,13 @@ position FindLast(position head)
 	return last;
 }
 
-position FindByLastName(position first, char* name, char*lastName, int by)
+position FindByLastName(position first, char* name, char* lastName, int by)
 {
 	position temp = NULL;
 	temp = first;
 	while (temp)
 	{
-		if(strcmp(lastName, temp->lastName)==0)
+		if (strcmp(lastName, temp->lastName) == 0)
 		{
 			return temp;
 		}
@@ -102,22 +102,64 @@ position FindByLastName(position first, char* name, char*lastName, int by)
 	}
 	return NULL;
 }
-int Delete(position head, char* name) {
+int Delete(position head, position name) {
 	position prev = NULL;
-	position toDelete = NULL;
+	position toDelete;
 	prev = FindPrev(head, name);
-	prev->next = toDelete->next;
-	free(toDelete);
+
+	if (prev != NULL) {
+		toDelete = prev->next;
+		prev->next = prev->next->next;
+		free(toDelete);
+	}
+	return 0;
+
 }
+
+position FindPrev(position head, position wanted) {
+	position temp = head;
+
+	while (temp->next != NULL) {
+		if (temp->next == wanted) {
+			return temp;
+		}
+		temp = temp->next;
+	}
+
+	return NULL;
+}
+
+
+
+
+
+
 int main()
 {
 	Person head = {
-		.name = {0},
-		.lastName = {0},
-		.birthyear = {0},
+		.name = "",
+		.lastName = "",
+		.birthyear = 0,
 		.next = NULL
 	};
+	/*
+	// Testiranje funkcija
+	PrependList(&head, "Ana", "Kovac", 1990);
+	AppendList(&head, "Jana", "Peric", 1985);
+	AppendList(&head, "Pero", "Horvat", 2000);
 
+	printf("Lista:\n");
+	printList(&head);
+
+	// Brisanje osobe
+	position toDelete = FindByLastName(&head, "Peric");
+	if (toDelete) {
+		Delete(&head, toDelete);
+	}
+
+	printf("\nNova lista:\n");
+	printList(&head);
+	*/
 	return 0;
 
 }
