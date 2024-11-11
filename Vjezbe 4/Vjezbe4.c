@@ -128,7 +128,7 @@ int main() {
 
 
     Position product = MultiplyPolinoms(head1.next, head2.next);
-    printf("Umnožak: ");
+    printf("Umnozak: ");
     PrintPolinom(product);
 
 
