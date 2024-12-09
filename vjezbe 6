@@ -1,0 +1,156 @@
+#define _CRT_SECURE_NO_WARNINGS
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+typedef struct _Artikl* Position;
+typedef struct _Artikl {
+    char naziv[50];
+    int kolicina;
+    float cijena;
+    Position next;
+} Artikl;
+
+typedef struct _Racun* position;
+typedef struct _Racun {
+    int dan, mjesec, godina;
+    Position artikli;
+    position next;
+} Racun;
+
+Position novi_artikl(const char* naziv, int kolicina, float cijena) {
+    Position novi = (Position)malloc(sizeof(Artikl));
+    if (!novi) {
+        perror("Greska pri alokaciji memorije za artikl");
+        exit(EXIT_FAILURE);
+    }
+    strcpy(novi->naziv, naziv);
+    novi->kolicina = kolicina;
+    novi->cijena = cijena;
+    novi->next = NULL;
+    return novi;
+}
+
+void dodaj_artikl(Position head, Position novi) {
+    while (head->next != NULL && strcmp(head->next->naziv, novi->naziv) < 0) {
+        head = head->next;
+    }
+    novi->next = head->next;
+    head->next = novi;
+}
+
+position novi_racun(int dan, int mjesec, int godina) {
+    position novi = (position)malloc(sizeof(Racun));
+    if (!novi) {
+        perror("Greska pri alokaciji memorije za racun");
+        exit(EXIT_FAILURE);
+    }
+    novi->dan = dan;
+    novi->mjesec = mjesec;
+    novi->godina = godina;
+    novi->artikli = (Position)malloc(sizeof(Artikl));
+    if (!novi->artikli) {
+        perror("Greska pri alokaciji memorije za artikle");
+        exit(EXIT_FAILURE);
+    }
+    novi->artikli->next = NULL;
+    novi->next = NULL;
+    return novi;
+}
+
+int uporedi_datume(int d1, int m1, int g1, int d2, int m2, int g2) {
+    if (g1 != g2) return g1 - g2;
+    if (m1 != m2) return m1 - m2;
+    return d1 - d2;
+}
+
+void dodaj_racun(position head, position novi) {
+    while (head->next != NULL &&
+        uporedi_datume(head->next->dan, head->next->mjesec, head->next->godina, novi->dan, novi->mjesec, novi->godina) < 0) {
+        head = head->next;
+    }
+    novi->next = head->next;
+    head->next = novi;
+}
+
+void ucitaj_racune(const char* ime_datoteke, position racuni) {
+    FILE* f = fopen(ime_datoteke, "r");
+    if (!f) {
+        perror("Greska pri otvaranju datoteke");
+        return;
+    }
+
+    char linija[100];
+    while (fgets(linija, sizeof(linija), f)) {
+        linija[strcspn(linija, "\n")] = 0;
+        FILE* racun_file = fopen(linija, "r");
+        if (!racun_file) {
+            perror("Greska pri otvaranju pojedinacnog racuna");
+            continue;
+        }
+
+        int dan, mjesec, godina;
+        fscanf(racun_file, "%d %d %d\n", &godina, &mjesec, &dan);
+        position novi_racun_cvor = novi_racun(dan, mjesec, godina);
+
+        while (fgets(linija, sizeof(linija), racun_file)) {
+            linija[strcspn(linija, "\n")] = 0;
+            char naziv[50];
+            int kolicina;
+            float cijena;
+            sscanf(linija, " %49[^,], %d, %f", naziv, &kolicina, &cijena);
+            Position novi_artikl_cvor = novi_artikl(naziv, kolicina, cijena);
+            dodaj_artikl(novi_racun_cvor->artikli, novi_artikl_cvor);
+        }
+        dodaj_racun(racuni, novi_racun_cvor);
+        fclose(racun_file);
+    }
+
+    fclose(f);
+}
+
+void pretrazi_artikl(position racuni, const char* naziv, int d_poc, int m_poc, int g_poc, int d_kraj, int m_kraj, int g_kraj) {
+    float ukupna_cijena = 0;
+    int ukupna_kolicina = 0;
+
+    while (racuni) {
+        if (uporedi_datume(racuni->dan, racuni->mjesec, racuni->godina, d_poc, m_poc, g_poc) >= 0 &&
+            uporedi_datume(racuni->dan, racuni->mjesec, racuni->godina, d_kraj, m_kraj, g_kraj) <= 0) {
+            Position artikl = racuni->artikli->next;
+            while (artikl) {
+                if (strcmp(artikl->naziv, naziv) == 0) {
+                    ukupna_cijena += artikl->cijena * artikl->kolicina;
+                    ukupna_kolicina += artikl->kolicina;
+                }
+                artikl = artikl->next;
+            }
+        }
+        racuni = racuni->next;
+    }
+
+    printf("Artikl: %s\n", naziv);
+    printf("Ukupna cijena: %.2f\n", ukupna_cijena);
+    printf("Ukupna kolicina: %d\n", ukupna_kolicina);
+}
+
+int main() {
+    Racun head1 = { 0, 0, 0, NULL, NULL };
+    head1.artikli = (Position)malloc(sizeof(Artikl));
+    head1.artikli->next = NULL;
+
+    ucitaj_racune("racuni.txt", &head1);
+
+    char artikl[50];
+    int d_poc, m_poc, g_poc, d_kraj, m_kraj, g_kraj;
+
+    printf("Unesite naziv artikla: ");
+    scanf("%49s", artikl);
+    printf("Unesite pocetni datum (DD MM YYYY): ");
+    scanf("%d %d %d", &d_poc, &m_poc, &g_poc);
+    printf("Unesite krajnji datum (DD MM YYYY): ");
+    scanf("%d %d %d", &d_kraj, &m_kraj, &g_kraj);
+
+    pretrazi_artikl(&head1, artikl, d_poc, m_poc, g_poc, d_kraj, m_kraj, g_kraj);
+
+    return 0;
+}
