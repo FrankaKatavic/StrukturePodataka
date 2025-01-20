@@ -1,154 +1,158 @@
-﻿
 #define _CRT_SECURE_NO_WARNINGS
 #include <stdio.h>
-#include <time.h> 
 #include <stdlib.h>
+#include <string.h>
 
-typedef struct _node* Position;
+typedef struct _grad* PositionG;
 
-typedef struct _node {
-    int val;
-    Position left;
-    Position right;
-}Node;
+typedef struct _grad { // stablo gradova
+    char naziv[50];
+    int broj_stanovnika;
+    PositionG left;
+    PositionG right;
+} Grad;
 
-Position CreateNode(int value) {
-    Position newNode = (Position)malloc(sizeof(Node));
-    newNode->val = value;
-    newNode->left = NULL;
-    newNode->right = NULL;
-    return newNode;
+typedef struct _drzava* PositionD;
 
-}
+typedef struct _drzava { // lista država
+    char naziv[50];
+    PositionG root;
+    PositionD next;
+} Drzava;
 
-Position insert(Position root, int value) {
-    if (root == NULL)
-        return CreateNode(value);
-
-    if (value > root->val)
-        root->left = insert(root->left, value);
-    if (value < root->val)
-        root->right = insert(root->right, value);
-
-    return root;
-}
-
-int inorder(Position root) {
-    if (root) {
-        inorder(root->left);
-        printf(" %d", root->val);
-        inorder(root->right);
+PositionG createGrad(char* naziv, int broj_stanovnika) {
+    PositionG q = (PositionG)malloc(sizeof(Grad));
+    if (!q) {
+        printf("Greska u alokaciji memorije!\n");
+        return NULL;
     }
-    return EXIT_SUCCESS;
+    strcpy(q->naziv, naziv);
+    q->broj_stanovnika = broj_stanovnika;
+    q->left = q->right = NULL;
+    return q;
 }
 
-Position find(Position root, int value) {
-    if (root == NULL || root->val == value)
-        return root;
-
-    if (value < root->val)
-        return find(root->left, value);
-    else
-        return find(root->right, value);
+PositionD createDrzava(char* naziv) {
+    PositionD q = (PositionD)malloc(sizeof(Drzava));
+    if (!q) {
+        printf("Greska u alokaciji memorije!\n");
+        return NULL;
+    }
+    strcpy(q->naziv, naziv);
+    q->root = NULL;
+    q->next = NULL;
+    return q;
 }
 
-
-Position findMin(Position root) {
-    while (root && root->left)
-        root = root->left;
+PositionG insertGrad(PositionG root, PositionG q) {
+    if (root == NULL) {
+        return q;
+    }
+    if (q->broj_stanovnika < root->broj_stanovnika) {
+        root->left = insertGrad(root->left, q);
+    }
+    else if (q->broj_stanovnika > root->broj_stanovnika ||
+        (q->broj_stanovnika == root->broj_stanovnika && strcmp(q->naziv, root->naziv) < 0)) {
+        root->right = insertGrad(root->right, q);
+    }
     return root;
 }
 
-Position delete(Position root, int value) {
-    if (root == NULL)
-        return root;
+PositionD insertDrzava(PositionD head, PositionD q) {
+    if (head == NULL || strcmp(q->naziv, head->naziv) < 0) {
+        q->next = head;
+        return q;
+    }
+    head->next = insertDrzava(head->next, q);
+    return head;
+}
 
-    if (value < root->val)
-        root->left = delete(root->left, value);
-    else if (value > root->val)
-        root->right = delete(root->right, value);
-    else {
-        if (root->left == NULL) {
-            Position temp = root->right;
-            free(root);
-            return temp;
+PositionD ReadFile(PositionD head) {
+    FILE* file = fopen("drzave.txt", "r");
+    if (!file) {
+        printf("Greska pri otvaranju datoteke: drzave.txt\n");
+        return NULL;
+    }
+
+    char drzavaNaziv[50], gradoviDatoteka[50];
+    while (fscanf(file, "%s %s", drzavaNaziv, gradoviDatoteka) == 2) {
+        PositionD q = createDrzava(drzavaNaziv);
+        head = insertDrzava(head, q);
+
+        FILE* gradoviFile = fopen(gradoviDatoteka, "r");
+        if (!gradoviFile) {
+            printf("Greska pri otvaranju datoteke: %s\n", gradoviDatoteka);
+            continue;
         }
-        else if (root->right == NULL) {
-            Position temp = root->left;
-            free(root);
-            return temp;
+
+        char gradNaziv[50];
+        int brojStanovnika;
+        while (fscanf(gradoviFile, "%[^,],%d", gradNaziv, &brojStanovnika) == 2) {
+            PositionG g = createGrad(gradNaziv, brojStanovnika);
+            q->root = insertGrad(q->root, g);
         }
 
-        Position temp = findMin(root->right);
-        root->val = temp->val;
-        root->right = delete(root->right, temp->val);
+        fclose(gradoviFile);
     }
-    return root;
+
+    fclose(file);
+    return head;
 }
 
-
-
-int generateRandomNumbers(Position root, int count) {
-    srand((unsigned int)time(NULL)); // Inicijalizacija generatoraA
-    for (int i = 0; i < count; i++) {
-        int randomNumber = (rand() % 81) + 10; // Opseg <10, 90>
-        root = insert(root, randomNumber);
-    }
-    return EXIT_SUCCESS;
-}
-
-int replace(Position root) {
-    if (root == NULL)
-        return 0;
-
-    int leftSum = replace(root->left);  // Suma levog podstabla
-    int rightSum = replace(root->right); // Suma desnog podstabla
-
-    int currentVal = root->val;  // Čuvamo trenutnu vrednost pre zamene
-    root->val = leftSum + rightSum;  // Zamenjujemo trenutnu vrednost
-
-    return currentVal + root->val;  // Vraćamo sumu za roditelja
-}
-void writeInorderToFile(Position root, FILE* file) {
+void pretraziGradove(PositionG root, int prag) {
     if (root) {
-        writeInorderToFile(root->left, file);
-        fprintf(file, "%d ", root->val);
-        writeInorderToFile(root->right, file);
+        pretraziGradove(root->left, prag);
+        if (root->broj_stanovnika > prag) {
+            printf("\t%s (%d)\n", root->naziv, root->broj_stanovnika);
+        }
+        pretraziGradove(root->right, prag);
     }
 }
+
+void ispisiGradove(PositionG root) {
+    if (root) {
+        ispisiGradove(root->left);
+        printf("\t%s (%d)\n", root->naziv, root->broj_stanovnika);
+        ispisiGradove(root->right);
+    }
+}
+
+void ispisiDrzave(PositionD head) {
+    while (head) {
+        printf("Drzava: %s\n", head->naziv);
+        ispisiGradove(head->root);
+        head = head->next;
+    }
+}
+
 int main() {
+    PositionD head = NULL;
+    head = ReadFile(head);
+    if (!head) {
+        return 1;
+    }
 
-    Position root = NULL;
+    printf("Podaci o drzavama i gradovima:\n");
+    ispisiDrzave(head);
 
-    root = insert(root, 2);
-    root = insert(root, 5);
-    root = insert(root, 7);
-    root = insert(root, 8);
-    root = insert(root, 11);
-    root = insert(root, 1);
-    root = insert(root, 4);
-    root = insert(root, 2);
-    root = insert(root, 3);
-    root = insert(root, 7);
+    char drzava[50];
+    int prag;
+    printf("\nUnesite ime drzave: ");
+    scanf("%s", drzava);
+    printf("Unesite minimalan broj stanovnika: ");
+    scanf("%d", &prag);
 
+    PositionD current = head;
+    while (current && strcmp(current->naziv, drzava) != 0) {
+        current = current->next;
+    }
 
-
-    printf("Inorder: ");
-    inorder(root);
-    printf("\n");
-
-    replace(root);
-
-    Position root1 = NULL;
-    generateRandomNumbers(root1, 10);
-
-    FILE* file = fopen("output.txt", "w");
-    if (file) {
-        writeInorderToFile(root, file);
-        fclose(file);
+    if (current) {
+        printf("Gradovi u drzavi %s s vise od %d stanovnika:\n", drzava, prag);
+        pretraziGradove(current->root, prag);
     }
     else {
-        printf("Greska pri otvaranju datoteke!\n");
+        printf("Drzava %s nije pronadjena.\n", drzava);
     }
 
     return 0;
