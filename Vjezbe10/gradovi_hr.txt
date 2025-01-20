@@ -1,0 +1,5 @@
+Osijek,100000
+Zagreb,800000
+Split,200000
+Dubrovnik,50000
+Rijeka,150000
