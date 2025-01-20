@@ -112,7 +112,7 @@ void pretraziGradove(PositionG root, int prag) {
 void ispisiGradove(PositionG root) {
     if (root) {
         ispisiGradove(root->left);
-        printf("\t%s (%d)\n", root->naziv, root->broj_stanovnika);
+        printf("%s (%d)\n", root->naziv, root->broj_stanovnika);
         ispisiGradove(root->right);
     }
 }
